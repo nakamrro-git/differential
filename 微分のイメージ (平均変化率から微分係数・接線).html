@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>微分のイメージ：平均変化率と微分係数・接線</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+    body {
+      font-family: 'Noto Sans JP', 'Inter', sans-serif;
+      user-select: none;
+    }
+    .slider-thumb::-webkit-slider-thumb {
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #6366f1;
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
+    }
+    .slider-thumb::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #6366f1;
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
+    }
+    canvas {
+      touch-action: none;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
+
+  <!-- ヘッダー -->
+  <header class="bg-slate-800 border-b border-slate-700 py-3.5 px-6 shadow-md">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3">
+      <div class="flex items-center gap-3">
+        <div class="bg-indigo-600 text-white p-2.5 rounded-xl shadow-lg shadow-indigo-500/30 font-serif font-bold text-xl">
+          f'(x)
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+            微分の視覚化イメージ <span class="text-xs bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full font-normal">平均変化率と接線・極限</span>
+          </h1>
+          <p class="text-xs text-slate-400">割線の傾き (Δy/Δx) において Δx → 0 とすることで、接線の傾き（微分係数）へ収束する様子をビジュアル化</p>
+        </div>
+      </div>
+
+      <!-- モード切り替え・解説トグル -->
+      <div class="flex items-center gap-2">
+        <button id="toggle-info-btn" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-2 rounded-lg transition border border-slate-600 flex items-center gap-1.5">
+          <i class="fa-solid fa-circle-info text-indigo-400"></i> 微分の解説
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 解説パネル (折りたたみ) -->
+  <div id="info-panel" class="hidden bg-slate-800/95 border-b border-indigo-500/30 px-6 py-4 transition-all">
+    <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+      <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700/60">
+        <h3 class="font-bold text-emerald-400 mb-2 flex items-center gap-2">
+          <i class="fa-solid fa-chart-line"></i> 1. 平均変化率（割線の傾き）
+        </h3>
+        <p class="text-slate-300 text-xs leading-relaxed">
+          曲線 y = f(x) 上の2点 P(a, f(a)) と Q(a+Δx, f(a+Δx)) を結ぶ直線の傾きです：
+          <span class="block my-2 text-center font-mono text-emerald-300 bg-slate-950/60 py-1.5 rounded border border-slate-800">
+            平均変化率 = Δy / Δx = ( f(a + Δx) - f(a) ) / Δx
+          </span>
+        </p>
+      </div>
+      <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700/60">
+        <h3 class="font-bold text-amber-400 mb-2 flex items-center gap-2">
+          <i class="fa-solid fa-compress"></i> 2. Δx を 0 に近づける（極限）
+        </h3>
+        <p class="text-slate-300 text-xs leading-relaxed">
+          点 Q を点 P に向かって無限に近づけていきます（Δx → 0）。2点間の距離は小さくなり、割線はだんだんと点 P における曲線の勢い（接線）に近づきます。
+        </p>
+      </div>
+      <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700/60">
+        <h3 class="font-bold text-indigo-400 mb-2 flex items-center gap-2">
+          <i class="fa-solid fa-square-root-variable"></i> 3. 微分係数（接線の傾き）
+        </h3>
+        <p class="text-slate-300 text-xs leading-relaxed">
+          Δx → 0 の極限値が点 P における微分係数 f'(a)（瞬間の変化率＝接線の傾き）です：
+          <span class="block my-2 text-center font-mono text-indigo-300 bg-slate-950/60 py-1.5 rounded border border-slate-800">
+            f'(a) = lim <sub>Δx → 0</sub> ( Δy / Δx )
+          </span>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- メインレイアウト -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- 左カラム: メインCanvas & インタラクティブコントロール (8列) -->
+    <div class="lg:col-span-8 flex flex-col gap-4">
+      
+      <!-- 関数の選択 & ツールバー -->
+      <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-sm flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3 flex-1 min-w-[240px]">
+          <label class="text-xs font-semibold text-slate-400 whitespace-nowrap">関数 f(x):</label>
+          <select id="function-select" class="bg-slate-900 border border-slate-700 text-white text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500 w-full transition">
+            <!-- JSで動的に設定 -->
+          </select>
+        </div>
+
+        <!-- 視覚表示切り替えオプション -->
+        <div class="flex items-center gap-4 text-xs">
+          <label class="flex items-center gap-1.5 cursor-pointer text-slate-300 hover:text-white">
+            <input type="checkbox" id="toggle-tangent" checked class="rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0">
+            <span>真の接線を表示</span>
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer text-slate-300 hover:text-white">
+            <input type="checkbox" id="toggle-triangle" checked class="rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0">
+            <span>Δx-Δy 変化率三角形</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Canvas コンテナ -->
+      <div class="relative bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden shadow-2xl flex-1 min-h-[430px] flex flex-col">
+        
+        <!-- Canvas上オーバーレイ: 操作ヒント & モード案内 -->
+        <div class="absolute top-3 left-4 pointer-events-none z-10 flex flex-col gap-2">
+          <div id="function-display-badge" class="bg-slate-900/90 backdrop-blur border border-slate-700 text-white px-3 py-1.5 rounded-xl text-sm font-semibold shadow-lg flex items-center gap-2">
+            <!-- JSで動的描画 -->
+          </div>
+          <div id="click-mode-indicator" class="text-xs bg-indigo-950/80 border border-indigo-500/40 text-indigo-200 px-3 py-1 rounded-lg w-fit flex items-center gap-1.5">
+            <i class="fa-solid fa-hand-pointer text-indigo-400"></i>
+            <span id="click-mode-text">グラフ上をクリックして始点 P(a) を指定</span>
+          </div>
+        </div>
+
+        <div class="absolute top-3 right-4 z-10 flex items-center gap-2">
+          <!-- 極限到達バッジ -->
+          <div id="limit-badge" class="hidden bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 text-xs px-3 py-1.5 rounded-xl font-bold animate-pulse flex items-center gap-1.5 backdrop-blur">
+            <i class="fa-solid fa-circle-check text-emerald-400"></i> 極限到達 (Δx ≈ 0): 割線が接線に一致！
+          </div>
+          <!-- ズーム操作 -->
+          <div class="bg-slate-900/80 backdrop-blur border border-slate-800 px-2.5 py-1 rounded-xl flex items-center gap-2 text-xs text-slate-400">
+            <i class="fa-solid fa-magnifying-glass-plus text-indigo-400"></i>
+            <span>拡大率:</span>
+            <input type="range" id="zoom-slider" min="1" max="8" step="0.5" value="1" class="w-20 accent-indigo-500">
+            <span id="zoom-val" class="font-mono text-slate-200 w-6">1.0x</span>
+          </div>
+        </div>
+
+        <!-- メイン描画キャンバス -->
+        <canvas id="main-canvas" class="w-full h-full cursor-crosshair flex-1"></canvas>
+
+        <!-- Canvas下部 ホバー情報バー -->
+        <div id="hover-info-bar" class="bg-slate-900/90 border-t border-slate-800 px-4 py-2 text-xs text-slate-300 flex justify-between items-center h-8 font-mono">
+          <span>グラフ上の任意の場所をクリック/タップして始点・終点を指定できます</span>
+          <span id="cursor-pos-display" class="text-indigo-300"></span>
+        </div>
+      </div>
+
+      <!-- コントロールパネル: Δx のスライダー & 極限アニメーション -->
+      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-md space-y-4">
+        
+        <!-- 始点 a と Δx の基本設定 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-3 border-b border-slate-700/70">
+          <!-- 始点 a の調整 -->
+          <div class="flex items-center justify-between bg-slate-900/60 p-2.5 rounded-xl border border-slate-700/60">
+            <label class="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
+              <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
+              始点 a (点 P):
+            </label>
+            <div class="flex items-center gap-2">
+              <input type="number" id="input-a" step="0.1" class="w-20 bg-slate-950 border border-slate-700 text-center text-sm font-mono rounded-lg py-1 text-white focus:outline-none focus:border-emerald-500">
+              <span class="text-xs text-slate-400 font-mono">x = <span id="val-a-text">1.00</span></span>
+            </div>
+          </div>
+
+          <!-- 終点 a+Δx (点 Q) -->
+          <div class="flex items-center justify-between bg-slate-900/60 p-2.5 rounded-xl border border-slate-700/60">
+            <label class="text-xs font-semibold text-rose-400 flex items-center gap-1.5">
+              <span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span>
+              終点 a + Δx (点 Q):
+            </label>
+            <div class="text-xs text-slate-300 font-mono">
+              x = <span id="val-ax-text" class="text-white font-bold">2.50</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Δx スライダー & アニメーションコントロール -->
+        <div class="space-y-3">
+          <div class="flex justify-between items-center">
+            <label class="text-sm font-bold text-white flex items-center gap-2">
+              <span>変化量 Δx:</span>
+              <span id="dx-value-display" class="text-indigo-400 text-lg font-extrabold font-mono">+1.500</span>
+            </label>
+            
+            <!-- 再生 / 一時停止 / リセット -->
+            <div class="flex items-center gap-2">
+              <button id="play-limit-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-md shadow-indigo-900/30">
+                <i class="fa-solid fa-play"></i> Δx → 0 極限再生
+              </button>
+              <button id="reset-btn" class="bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded-xl text-xs font-medium transition">
+                <i class="fa-solid fa-rotate-left"></i> リセット
+              </button>
+            </div>
+          </div>
+
+          <!-- Δx スライダー (-3.0 から +3.0) -->
+          <div class="flex items-center gap-3">
+            <span class="text-xs font-mono text-slate-400">-3.0</span>
+            <input type="range" id="dx-slider" min="-3" max="3" step="0.005" value="1.5" class="w-full h-2 bg-slate-900 rounded-lg appearance-none cursor-pointer slider-thumb accent-indigo-500">
+            <span class="text-xs font-mono text-slate-400">+3.0</span>
+          </div>
+
+          <!-- Δx プリセットボタン -->
+          <div class="flex justify-between items-center text-xs text-slate-400 pt-1">
+            <span>Δx のクイック指定:</span>
+            <div class="flex gap-1.5">
+              <button class="dx-preset bg-slate-900 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-700 font-mono text-xs" data-dx="-1.0">-1.0</button>
+              <button class="dx-preset bg-slate-900 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-700 font-mono text-xs" data-dx="-0.1">-0.1</button>
+              <button class="dx-preset bg-indigo-950 hover:bg-indigo-800 text-indigo-300 border border-indigo-700 px-2 py-0.5 rounded font-mono text-xs font-bold" data-dx="0.001">≈ 0</button>
+              <button class="dx-preset bg-slate-900 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-700 font-mono text-xs" data-dx="0.1">+0.1</button>
+              <button class="dx-preset bg-slate-900 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-700 font-mono text-xs" data-dx="1.0">+1.0</button>
+              <button class="dx-preset bg-slate-900 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-700 font-mono text-xs" data-dx="2.0">+2.0</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 右カラム: 数値ダッシュボード & 収束グラフ (4列) -->
+    <div class="lg:col-span-4 flex flex-col gap-4">
+      
+      <!-- 傾きと変化率の数値分析カード -->
+      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-md space-y-4">
+        <h2 class="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center justify-between border-b border-slate-700 pb-3">
+          <span>傾きと変化率の比較</span>
+          <i class="fa-solid fa-calculator text-indigo-400"></i>
+        </h2>
+
+        <!-- 平均変化率（割線の傾き） -->
+        <div class="bg-slate-900/80 p-3.5 rounded-xl border border-rose-500/30 flex justify-between items-center">
+          <div>
+            <div class="text-xs text-rose-300 font-medium flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> 割線の傾き (平均変化率)
+            </div>
+            <div class="text-[11px] text-slate-400 font-mono mt-0.5">Δy / Δx = <span id="dy-val-text">0.00</span> / <span id="dx-val-text">0.00</span></div>
+          </div>
+          <div id="secant-slope-display" class="text-xl font-bold font-mono text-rose-400">0.00000</div>
+        </div>
+
+        <!-- 微分係数（接線の傾き） -->
+        <div class="bg-slate-900/80 p-3.5 rounded-xl border border-emerald-500/30 flex justify-between items-center">
+          <div>
+            <div class="text-xs text-emerald-300 font-medium flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> 接線の傾き (微分係数 f'(a))
+            </div>
+            <div class="text-[11px] text-slate-400 font-mono mt-0.5">lim <sub>Δx → 0</sub> (Δy / Δx)</div>
+          </div>
+          <div id="tangent-slope-display" class="text-xl font-bold font-mono text-emerald-400">0.00000</div>
+        </div>
+
+        <!-- 誤差分析 -->
+        <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/80 flex justify-between items-center">
+          <div class="text-xs text-slate-400">
+            傾きの差 (誤差) <span class="text-[10px] text-slate-500 block">|平均変化率 - f'(a)|</span>
+          </div>
+          <div id="slope-error-display" class="text-base font-bold font-mono text-amber-400">0.00000</div>
+        </div>
+
+        <!-- 座標値の内訳 -->
+        <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+          <div class="bg-slate-950 p-2 rounded-lg border border-slate-800">
+            <span class="text-slate-500 block text-[10px]">点 P の y 座標:</span>
+            <span class="text-emerald-300">f(a) = <span id="fa-val-display">0.00</span></span>
+          </div>
+          <div class="bg-slate-950 p-2 rounded-lg border border-slate-800">
+            <span class="text-slate-500 block text-[10px]">y の変化量:</span>
+            <span class="text-indigo-300">Δy = <span id="dy-calc-display">0.00</span></span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Δx による傾きの収束グラフ (Δx vs 傾き) -->
+      <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-md flex-1 flex flex-col justify-between">
+        <div class="flex justify-between items-center mb-2">
+          <h3 class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+            <i class="fa-solid fa-chart-line text-indigo-400"></i> Δx に対する割線傾きの収束曲線
+          </h3>
+          <span class="text-[10px] text-slate-400">横軸: Δx, 縦軸: 傾き</span>
+        </div>
+
+        <div class="relative w-full h-44 bg-slate-950 rounded-xl border border-slate-800 overflow-hidden">
+          <canvas id="convergence-canvas" class="w-full h-full"></canvas>
+        </div>
+
+        <div class="mt-3 text-[11px] text-slate-400 leading-relaxed bg-slate-900/50 p-2.5 rounded-lg border border-slate-700/50">
+          <i class="fa-solid fa-lightbulb text-amber-400 me-1"></i>
+          <strong>収束の観察:</strong> Δx を左右（正・負）どちらから 0 に近づけても、割線の傾き（黄色曲線）が真の微分係数 f'(a)（緑色点線）へと連続的に吸い寄せられるのが観察できます。
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- フッター -->
+  <footer class="bg-slate-950 border-t border-slate-800 py-3 text-center text-xs text-slate-500">
+    <p>微分の概念学習シミュレーター | 平均変化率・接線の極限と微分係数のビジュアル理解</p>
+  </footer>
+
+  <!-- JavaScript ロジック -->
+  <script>
+    // --- 関数定義リスト（解析的な導関数 f'(x) を内蔵） ---
+    const FUNCTIONS = [
+      {
+        id: 'parabola',
+        name: 'f(x) = 0.5x²',
+        displayHTML: 'f(x) = 0.5x<sup>2</sup>',
+        f: x => 0.5 * x * x,
+        df: x => x, // f'(x) = x
+        defaultA: 1.0,
+        defaultDx: 1.5,
+        xMin: -3.5, xMax: 4.5, yMin: -1.0, yMax: 8.0
+      },
+      {
+        id: 'cubic',
+        name: 'f(x) = 0.2x³ - x',
+        displayHTML: 'f(x) = 0.2x<sup>3</sup> - x',
+        f: x => 0.2 * Math.pow(x, 3) - x,
+        df: x => 0.6 * x * x - 1.0, // f'(x) = 0.6x² - 1
+        defaultA: 1.2,
+        defaultDx: 1.2,
+        xMin: -3.5, xMax: 4.0, yMin: -3.5, yMax: 6.0
+      },
+      {
+        id: 'sin',
+        name: 'f(x) = sin(x) + 1.5',
+        displayHTML: 'f(x) = sin(x) + 1.5',
+        f: x => Math.sin(x) + 1.5,
+        df: x => Math.cos(x), // f'(x) = cos(x)
+        defaultA: 0.5,
+        defaultDx: 1.5,
+        xMin: -1.0, xMax: 6.5, yMin: -0.5, yMax: 3.5
+      },
+      {
+        id: 'exp',
+        name: 'f(x) = e^(0.5x)',
+        displayHTML: 'f(x) = e<sup>0.5x</sup>',
+        f: x => Math.exp(0.5 * x),
+        df: x => 0.5 * Math.exp(0.5 * x), // f'(x) = 0.5 e^(0.5x)
+        defaultA: 1.0,
+        defaultDx: 1.2,
+        xMin: -2.0, xMax: 4.5, yMin: -0.5, yMax: 8.0
+      },
+      {
+        id: 'sqrt',
+        name: 'f(x) = √(x + 3.5)',
+        displayHTML: 'f(x) = √(x + 3.5)',
+        f: x => Math.sqrt(Math.max(0, x + 3.5)),
+        df: x => (x + 3.5 <= 0) ? 0 : 1 / (2 * Math.sqrt(x + 3.5)), // f'(x) = 1 / 2√(x+3.5)
+        defaultA: 0.5,
+        defaultDx: 2.0,
+        xMin: -3.2, xMax: 5.5, yMin: -0.5, yMax: 4.0
+      }
+    ];
+
+    // --- アプリケーション状態 ---
+    let state = {
+      currentFunc: FUNCTIONS[0],
+      a: FUNCTIONS[0].defaultA,
+      dx: FUNCTIONS[0].defaultDx,
+      zoom: 1.0,
+      showTangent: true,
+      showTriangle: true,
+      isPlaying: false,
+      clickMode: 'setA', // 'setA' (始点指定待ち) or 'setDx' (終点指定待ち)
+      hoveredPoint: null, // 'P', 'Q', or null
+      isDragging: false,
+      dragTarget: null // 'P', 'Q', or null
+    };
+
+    let animTimer = null;
+
+    // --- DOM要素取得 ---
+    const mainCanvas = document.getElementById('main-canvas');
+    const mainCtx = mainCanvas.getContext('2d');
+    const convergenceCanvas = document.getElementById('convergence-canvas');
+    const convergenceCtx = convergenceCanvas.getContext('2d');
+
+    const functionSelect = document.getElementById('function-select');
+    const inputA = document.getElementById('input-a');
+    const dxSlider = document.getElementById('dx-slider');
+    const dxValueDisplay = document.getElementById('dx-value-display');
+    const zoomSlider = document.getElementById('zoom-slider');
+    const zoomValDisplay = document.getElementById('zoom-val');
+
+    const playLimitBtn = document.getElementById('play-limit-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const toggleTangentCb = document.getElementById('toggle-tangent');
+    const toggleTriangleCb = document.getElementById('toggle-triangle');
+
+    const valAText = document.getElementById('val-a-text');
+    const valAxText = document.getElementById('val-ax-text');
+    const secantSlopeDisplay = document.getElementById('secant-slope-display');
+    const tangentSlopeDisplay = document.getElementById('tangent-slope-display');
+    const slopeErrorDisplay = document.getElementById('slope-error-display');
+    const dyValText = document.getElementById('dy-val-text');
+    const dxValText = document.getElementById('dx-val-text');
+    const faValDisplay = document.getElementById('fa-val-display');
+    const dyCalcDisplay = document.getElementById('dy-calc-display');
+
+    const limitBadge = document.getElementById('limit-badge');
+    const clickModeText = document.getElementById('click-mode-text');
+    const functionDisplayBadge = document.getElementById('function-display-badge');
+    const cursorPosDisplay = document.getElementById('cursor-pos-display');
+    const infoPanel = document.getElementById('info-panel');
+    const toggleInfoBtn = document.getElementById('toggle-info-btn');
+
+    // --- 初期化 ---
+    function init() {
+      // 関数のセレクトボックス生成
+      FUNCTIONS.forEach((fn, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx;
+        opt.textContent = fn.name;
+        functionSelect.appendChild(opt);
+      });
+
+      // イベントリスナーの登録
+      functionSelect.addEventListener('change', (e) => {
+        state.currentFunc = FUNCTIONS[e.target.value];
+        state.a = state.currentFunc.defaultA;
+        state.dx = state.currentFunc.defaultDx;
+        inputA.value = state.a.toFixed(2);
+        dxSlider.value = state.dx;
+        updateUI();
+      });
+
+      inputA.addEventListener('change', (e) => {
+        let val = parseFloat(e.target.value);
+        if (isNaN(val)) val = 0;
+        state.a = val;
+        updateUI();
+      });
+
+      dxSlider.addEventListener('input', (e) => {
+        state.dx = parseFloat(e.target.value);
+        updateUI();
+      });
+
+      zoomSlider.addEventListener('input', (e) => {
+        state.zoom = parseFloat(e.target.value);
+        zoomValDisplay.textContent = state.zoom.toFixed(1) + 'x';
+        render();
+      });
+
+      toggleTangentCb.addEventListener('change', (e) => {
+        state.showTangent = e.target.checked;
+        render();
+      });
+
+      toggleTriangleCb.addEventListener('change', (e) => {
+        state.showTriangle = e.target.checked;
+        render();
+      });
+
+      document.querySelectorAll('.dx-preset').forEach(btn => {
+        btn.addEventListener('click', () => {
+          stopAnimation();
+          state.dx = parseFloat(btn.dataset.dx);
+          dxSlider.value = state.dx;
+          updateUI();
+        });
+      });
+
+      playLimitBtn.addEventListener('click', toggleAnimation);
+      resetBtn.addEventListener('click', () => {
+        stopAnimation();
+        state.a = state.currentFunc.defaultA;
+        state.dx = state.currentFunc.defaultDx;
+        state.zoom = 1.0;
+        zoomSlider.value = 1.0;
+        zoomValDisplay.textContent = '1.0x';
+        inputA.value = state.a.toFixed(2);
+        dxSlider.value = state.dx;
+        state.clickMode = 'setA';
+        updateUI();
+      });
+
+      toggleInfoBtn.addEventListener('click', () => {
+        infoPanel.classList.toggle('hidden');
+      });
+
+      // マウス/タッチインタラクション
+      setupCanvasEvents();
+
+      // 初期入力値
+      inputA.value = state.a.toFixed(2);
+      dxSlider.value = state.dx;
+
+      // ウインドウリサイズ対応
+      window.addEventListener('resize', render);
+
+      updateUI();
+    }
+
+    // --- 極限アニメーション (Δx → 0) ---
+    function toggleAnimation() {
+      if (state.isPlaying) {
+        stopAnimation();
+      } else {
+        startAnimation();
+      }
+    }
+
+    function startAnimation() {
+      state.isPlaying = true;
+      playLimitBtn.innerHTML = '<i class="fa-solid fa-pause"></i> 一時停止';
+      playLimitBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-500');
+      playLimitBtn.classList.add('bg-amber-600', 'hover:bg-amber-500');
+
+      // Δx がほぼ0になるまで連続的に縮小
+      animTimer = setInterval(() => {
+        // 現在の符号を維持しながら0に急接近
+        if (Math.abs(state.dx) < 0.002) {
+          state.dx = state.dx >= 0 ? 0.001 : -0.001;
+          stopAnimation();
+        } else {
+          state.dx = state.dx * 0.92; // 毎ステップ8%ずつ短縮
+        }
+        dxSlider.value = state.dx;
+        updateUI();
+      }, 40);
+    }
+
+    function stopAnimation() {
+      state.isPlaying = false;
+      playLimitBtn.innerHTML = '<i class="fa-solid fa-play"></i> Δx → 0 極限再生';
+      playLimitBtn.classList.remove('bg-amber-600', 'hover:bg-amber-500');
+      playLimitBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-500');
+      if (animTimer) clearInterval(animTimer);
+    }
+
+    // --- 計算・更新ロジック ---
+    function updateUI() {
+      const fn = state.currentFunc;
+      const a = state.a;
+      let dx = state.dx;
+
+      // ゼロ除算防止の微小値
+      if (Math.abs(dx) < 1e-7) {
+        dx = dx >= 0 ? 1e-7 : -1e-7;
+      }
+
+      const fa = fn.f(a);
+      const fax = fn.f(a + dx);
+      const dy = fax - fa;
+      const secantSlope = dy / dx; // 平均変化率
+      const tangentSlope = fn.df(a); // 微分係数 f'(a)
+      const absError = Math.abs(secantSlope - tangentSlope);
+
+      // DOM表示の更新
+      valAText.textContent = a.toFixed(2);
+      valAxText.textContent = (a + dx).toFixed(2);
+      dxValueDisplay.textContent = (dx >= 0 ? '+' : '') + dx.toFixed(3);
+
+      secantSlopeDisplay.textContent = secantSlope.toFixed(5);
+      tangentSlopeDisplay.textContent = tangentSlope.toFixed(5);
+      slopeErrorDisplay.textContent = absError.toFixed(5);
+
+      dyValText.textContent = dy.toFixed(3);
+      dxValText.textContent = dx.toFixed(3);
+      faValDisplay.textContent = fa.toFixed(3);
+      dyCalcDisplay.textContent = (dy >= 0 ? '+' : '') + dy.toFixed(3);
+
+      // バッジ表示 (Δx ≈ 0)
+      if (Math.abs(dx) <= 0.05) {
+        limitBadge.classList.remove('hidden');
+      } else {
+        limitBadge.classList.add('hidden');
+      }
+
+      // クリック指示テキストの動的変更
+      if (state.clickMode === 'setA') {
+        clickModeText.textContent = 'グラフ上をクリックして始点 P(a) を指定';
+      } else {
+        clickModeText.textContent = 'グラフ上をクリックして終点 Q(a+Δx) を指定';
+      }
+
+      // 数式バッジ表示
+      functionDisplayBadge.innerHTML = `<i class="fa-solid fa-function text-indigo-400"></i> ${fn.displayHTML}`;
+
+      render();
+    }
+
+    // --- Canvas 描画の統括 ---
+    function render() {
+      resizeCanvas(mainCanvas);
+      resizeCanvas(convergenceCanvas);
+
+      const width = mainCanvas.width;
+      const height = mainCanvas.height;
+      const fn = state.currentFunc;
+      const a = state.a;
+      const dx = state.dx;
+      const zoom = state.zoom;
+
+      mainCtx.clearRect(0, 0, width, height);
+
+      // ズームを考慮したビューポート計算（始点 P(a, f(a)) を中心として拡大）
+      const pY = fn.f(a);
+      const baseW = fn.xMax - fn.xMin;
+      const baseH = fn.yMax - fn.yMin;
+
+      const spanX = baseW / zoom;
+      const spanY = baseH / zoom;
+
+      // P点が中心に来やすくなるようバイアス調整
+      const worldXMin = a - spanX * 0.4;
+      const worldXMax = a + spanX * 0.6;
+      const worldYMin = pY - spanY * 0.4;
+      const worldYMax = pY + spanY * 0.6;
+
+      // 座標変換関数
+      function toScreenX(x) {
+        return ((x - worldXMin) / (worldXMax - worldXMin)) * width;
+      }
+      function toScreenY(y) {
+        return height - ((y - worldYMin) / (worldYMax - worldYMin)) * height;
+      }
+      function toWorldX(px) {
+        return worldXMin + (px / width) * (worldXMax - worldXMin);
+      }
+      function toWorldY(py) {
+        return worldYMin + ((height - py) / height) * (worldYMax - worldYMin);
+      }
+
+      state.toScreenX = toScreenX;
+      state.toScreenY = toScreenY;
+      state.toWorldX = toWorldX;
+      state.toWorldY = toWorldY;
+
+      // 1. グリッドと座標軸
+      drawGridAndAxes(mainCtx, width, height, worldXMin, worldXMax, worldYMin, worldYMax, toScreenX, toScreenY);
+
+      // 2. 真の接線（点 P における接線） - 背景
+      if (state.showTangent) {
+        drawTangentLine(mainCtx, fn, a, worldXMin, worldXMax, toScreenX, toScreenY);
+      }
+
+      // 3. Δx - Δy 直角三角形
+      if (state.showTriangle && Math.abs(dx) > 1e-5) {
+        drawDeltaTriangle(mainCtx, fn, a, dx, toScreenX, toScreenY);
+      }
+
+      // 4. 割線 (Secant Line)
+      drawSecantLine(mainCtx, fn, a, dx, worldXMin, worldXMax, toScreenX, toScreenY);
+
+      // 5. 関数曲線 f(x)
+      drawFunctionCurve(mainCtx, fn, worldXMin, worldXMax, toScreenX, toScreenY);
+
+      // 6. 点 P(a, f(a)) と 点 Q(a+Δx, f(a+Δx)) のマーカー & ラベル
+      drawPointsPAndQ(mainCtx, fn, a, dx, toScreenX, toScreenY);
+
+      // 7. サブCanvas: 収束曲線グラフ
+      renderConvergenceGraph();
+    }
+
+    // --- 1. 座標軸 & グリッド描画 ---
+    function drawGridAndAxes(ctx, width, height, xMin, xMax, yMin, yMax, toX, toY) {
+      ctx.strokeStyle = '#334155'; // slate-700
+      ctx.lineWidth = 1;
+      ctx.fillStyle = '#94a3b8'; // slate-400
+      ctx.font = '11px sans-serif';
+
+      const xRange = xMax - xMin;
+      const xStep = xRange > 8 ? 2 : (xRange > 3 ? 1 : 0.5);
+
+      for (let x = Math.ceil(xMin / xStep) * xStep; x <= xMax; x += xStep) {
+        const sx = toX(x);
+        ctx.beginPath();
+        ctx.moveTo(sx, 0);
+        ctx.lineTo(sx, height);
+        ctx.stroke();
+
+        const sy0 = toY(0);
+        ctx.fillText(x.toFixed(1), sx - 8, Math.min(Math.max(sy0 + 14, 15), height - 6));
+      }
+
+      const yRange = yMax - yMin;
+      const yStep = yRange > 8 ? 2 : (yRange > 3 ? 1 : 0.5);
+
+      for (let y = Math.ceil(yMin / yStep) * yStep; y <= yMax; y += yStep) {
+        const sy = toY(y);
+        ctx.beginPath();
+        ctx.moveTo(0, sy);
+        ctx.lineTo(width, sy);
+        ctx.stroke();
+
+        const sx0 = toX(0);
+        ctx.fillText(y.toFixed(1), Math.min(Math.max(sx0 - 24, 6), width - 30), sy + 4);
+      }
+
+      // 主軸 (X=0, Y=0)
+      ctx.strokeStyle = '#64748b'; // slate-500
+      ctx.lineWidth = 2;
+
+      const sy0 = toY(0);
+      ctx.beginPath();
+      ctx.moveTo(0, sy0);
+      ctx.lineTo(width, sy0);
+      ctx.stroke();
+
+      const sx0 = toX(0);
+      ctx.beginPath();
+      ctx.moveTo(sx0, 0);
+      ctx.lineTo(sx0, height);
+      ctx.stroke();
+    }
+
+    // --- 2. 真の接線 (Tangent Line) ---
+    function drawTangentLine(ctx, fn, a, xMin, xMax, toX, toY) {
+      const fa = fn.f(a);
+      const slope = fn.df(a);
+
+      const y1 = fa + slope * (xMin - a);
+      const y2 = fa + slope * (xMax - a);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.setLineDash([6, 5]);
+      ctx.moveTo(toX(xMin), toY(y1));
+      ctx.lineTo(toX(xMax), toY(y2));
+      ctx.strokeStyle = '#10b981'; // emerald-500
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // --- 3. Δx - Δy 直角三角形 ---
+    function drawDeltaTriangle(ctx, fn, a, dx, toX, toY) {
+      const px = toX(a);
+      const py = toY(fn.f(a));
+      const qx = toX(a + dx);
+      const qy = toY(fn.f(a + dx));
+
+      ctx.save();
+
+      // 三角形領域の半透明ハイライト
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.lineTo(qx, py);
+      ctx.lineTo(qx, qy);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(99, 102, 241, 0.15)'; // indigo opacity
+      ctx.fill();
+
+      // 底辺 Δx (水平線)
+      ctx.beginPath();
+      ctx.setLineDash([4, 3]);
+      ctx.moveTo(px, py);
+      ctx.lineTo(qx, py);
+      ctx.strokeStyle = '#818cf8'; // indigo-400
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // 高さ Δy (垂直線)
+      ctx.beginPath();
+      ctx.moveTo(qx, py);
+      ctx.lineTo(qx, qy);
+      ctx.strokeStyle = '#f43f5e'; // rose-500
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // ラベルテキスト描画
+      ctx.setLineDash([]);
+      ctx.font = 'bold 12px font-mono, sans-serif';
+
+      // Δx ラベル
+      ctx.fillStyle = '#c7d2fe';
+      const dxText = `Δx = ${dx.toFixed(2)}`;
+      ctx.fillText(dxText, (px + qx) / 2 - 20, py + (dx >= 0 ? 16 : -8));
+
+      // Δy ラベル
+      const dy = fn.f(a + dx) - fn.f(a);
+      ctx.fillStyle = '#fda4af';
+      const dyText = `Δy = ${dy.toFixed(2)}`;
+      ctx.fillText(dyText, qx + (dx >= 0 ? 8 : -65), (py + qy) / 2 + 4);
+
+      ctx.restore();
+    }
+
+    // --- 4. 割線 (Secant Line) ---
+    function drawSecantLine(ctx, fn, a, dx, xMin, xMax, toX, toY) {
+      const fa = fn.f(a);
+      const fax = fn.f(a + dx);
+
+      let slope = 0;
+      if (Math.abs(dx) < 1e-7) {
+        slope = fn.df(a);
+      } else {
+        slope = (fax - fa) / dx;
+      }
+
+      const y1 = fa + slope * (xMin - a);
+      const y2 = fa + slope * (xMax - a);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(toX(xMin), toY(y1));
+      ctx.lineTo(toX(xMax), toY(y2));
+      ctx.strokeStyle = '#f43f5e'; // rose-500
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = 'rgba(244, 63, 94, 0.4)';
+      ctx.shadowBlur = 6;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // --- 5. 関数曲線 f(x) ---
+    function drawFunctionCurve(ctx, fn, xMin, xMax, toX, toY) {
+      ctx.save();
+      ctx.beginPath();
+      const samples = 350;
+      const step = (xMax - xMin) / samples;
+
+      for (let i = 0; i <= samples; i++) {
+        const x = xMin + i * step;
+        const y = fn.f(x);
+        const sx = toX(x);
+        const sy = toY(y);
+        if (i === 0) ctx.moveTo(sx, sy);
+        else ctx.lineTo(sx, sy);
+      }
+
+      ctx.strokeStyle = '#38bdf8'; // sky-400
+      ctx.lineWidth = 3.5;
+      ctx.shadowColor = 'rgba(56, 189, 248, 0.4)';
+      ctx.shadowBlur = 8;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // --- 6. 点 P と 点 Q マーカー ---
+    function drawPointsPAndQ(ctx, fn, a, dx, toX, toY) {
+      const px = toX(a);
+      const py = toY(fn.f(a));
+      const qx = toX(a + dx);
+      const qy = toY(fn.f(a + dx));
+
+      ctx.save();
+
+      // 点 P (始点)
+      const isPHovered = state.hoveredPoint === 'P';
+      ctx.beginPath();
+      ctx.arc(px, py, isPHovered ? 9 : 7, 0, Math.PI * 2);
+      ctx.fillStyle = '#10b981'; // emerald-500
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // P ラベル
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillText(`P (a=${a.toFixed(2)})`, px - 25, py - 14);
+
+      // 点 Q (終点)
+      if (Math.abs(dx) > 0.01) {
+        const isQHovered = state.hoveredPoint === 'Q';
+        ctx.beginPath();
+        ctx.arc(qx, qy, isQHovered ? 9 : 7, 0, Math.PI * 2);
+        ctx.fillStyle = '#f43f5e'; // rose-500
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Q ラベル
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText(`Q (a+Δx)`, qx + 10, qy - 12);
+      }
+
+      ctx.restore();
+    }
+
+    // --- 7. サブCanvas: 収束曲線グラフ (Δx vs 傾き) ---
+    function renderConvergenceGraph() {
+      const width = convergenceCanvas.width;
+      const height = convergenceCanvas.height;
+      const fn = state.currentFunc;
+      const a = state.a;
+      const currentDx = state.dx;
+      const tangentSlope = fn.df(a);
+
+      convergenceCtx.clearRect(0, 0, width, height);
+
+      const paddingLeft = 35;
+      const paddingBottom = 22;
+      const graphW = width - paddingLeft - 15;
+      const graphH = height - paddingBottom - 15;
+
+      const minDx = -3.0;
+      const maxDx = 3.0;
+
+      // 縦軸（傾き）のレンジ計算
+      let slopes = [];
+      for (let d = minDx; d <= maxDx; d += 0.1) {
+        if (Math.abs(d) < 1e-4) continue;
+        const s = (fn.f(a + d) - fn.f(a)) / d;
+        if (!isNaN(s) && isFinite(s)) slopes.push(s);
+      }
+      slopes.push(tangentSlope);
+
+      let minS = Math.min(...slopes);
+      let maxS = Math.max(...slopes);
+      let sMargin = (maxS - minS) * 0.2;
+      if (sMargin < 0.5) sMargin = 0.5;
+
+      const yMinSlope = minS - sMargin;
+      const yMaxSlope = maxS + sMargin;
+
+      function toGraphX(dxVal) {
+        return paddingLeft + ((dxVal - minDx) / (maxDx - minDx)) * graphW;
+      }
+      function toGraphY(slopeVal) {
+        return (height - paddingBottom) - ((slopeVal - yMinSlope) / (yMaxSlope - yMinSlope)) * graphH;
+      }
+
+      // 軸を描画
+      convergenceCtx.strokeStyle = '#475569';
+      convergenceCtx.lineWidth = 1;
+      convergenceCtx.beginPath();
+      convergenceCtx.moveTo(paddingLeft, 10);
+      convergenceCtx.lineTo(paddingLeft, height - paddingBottom);
+      convergenceCtx.lineTo(width - 10, height - paddingBottom);
+      convergenceCtx.stroke();
+
+      // Δx = 0 基準線
+      const zeroX = toGraphX(0);
+      convergenceCtx.strokeStyle = '#64748b';
+      convergenceCtx.beginPath();
+      convergenceCtx.moveTo(zeroX, 10);
+      convergenceCtx.lineTo(zeroX, height - paddingBottom);
+      convergenceCtx.stroke();
+
+      // 真の微分係数 f'(a) 水平ターゲット線（緑点線）
+      const tangentY = toGraphY(tangentSlope);
+      convergenceCtx.save();
+      convergenceCtx.beginPath();
+      convergenceCtx.setLineDash([4, 3]);
+      convergenceCtx.moveTo(paddingLeft, tangentY);
+      convergenceCtx.lineTo(width - 10, tangentY);
+      convergenceCtx.strokeStyle = '#10b981';
+      convergenceCtx.lineWidth = 1.5;
+      convergenceCtx.stroke();
+      convergenceCtx.restore();
+
+      // ラベル
+      convergenceCtx.fillStyle = '#94a3b8';
+      convergenceCtx.font = '9px sans-serif';
+      convergenceCtx.fillText('-3.0', paddingLeft - 5, height - 6);
+      convergenceCtx.fillText('0', zeroX - 3, height - 6);
+      convergenceCtx.fillText('+3.0', width - 25, height - 6);
+      convergenceCtx.fillText(`f'(a)=${tangentSlope.toFixed(2)}`, 5, Math.min(Math.max(tangentY + 3, 15), height - 25));
+
+      // 割線傾き曲線（黄色）
+      convergenceCtx.beginPath();
+      let first = true;
+      for (let d = minDx; d <= maxDx; d += 0.05) {
+        let s = 0;
+        if (Math.abs(d) < 1e-4) {
+          s = tangentSlope;
+        } else {
+          s = (fn.f(a + d) - fn.f(a)) / d;
+        }
+
+        const gx = toGraphX(d);
+        const gy = toGraphY(s);
+
+        if (first) {
+          convergenceCtx.moveTo(gx, gy);
+          first = false;
+        } else {
+          convergenceCtx.lineTo(gx, gy);
+        }
+      }
+      convergenceCtx.strokeStyle = '#fbbf24'; // amber-400
+      convergenceCtx.lineWidth = 2;
+      convergenceCtx.stroke();
+
+      // 現在の Δx のマーカー
+      const curSlope = Math.abs(currentDx) < 1e-4 ? tangentSlope : (fn.f(a + currentDx) - fn.f(a)) / currentDx;
+      const curGx = toGraphX(currentDx);
+      const curGy = toGraphY(curSlope);
+
+      convergenceCtx.beginPath();
+      convergenceCtx.arc(curGx, curGy, 5, 0, Math.PI * 2);
+      convergenceCtx.fillStyle = '#f43f5e';
+      convergenceCtx.fill();
+      convergenceCtx.strokeStyle = '#ffffff';
+      convergenceCtx.lineWidth = 1.5;
+      convergenceCtx.stroke();
+    }
+
+    // --- キャンバス解像度自動調整 ---
+    function resizeCanvas(canvas) {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      const targetW = Math.floor(rect.width * dpr);
+      const targetH = Math.floor(rect.height * dpr);
+
+      if (canvas.width !== targetW || canvas.height !== targetH) {
+        canvas.width = targetW;
+        canvas.height = targetH;
+      }
+    }
+
+    // --- マウス & タッチイベント制御 ---
+    function setupCanvasEvents() {
+      function getPos(e) {
+        const rect = mainCanvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return {
+          x: (clientX - rect.left) * (mainCanvas.width / rect.width),
+          y: (clientY - rect.top) * (mainCanvas.height / rect.height)
+        };
+      }
+
+      function handleMove(e) {
+        const pos = getPos(e);
+        const worldX = state.toWorldX ? state.toWorldX(pos.x) : 0;
+        const worldY = state.toWorldY ? state.toWorldY(pos.y) : 0;
+
+        // カーソル位置のリアルタイム表示
+        cursorPosDisplay.textContent = `x = ${worldX.toFixed(2)}, y = ${worldY.toFixed(2)}`;
+
+        const px = state.toScreenX(state.a);
+        const py = state.toScreenY(state.currentFunc.f(state.a));
+        const qx = state.toScreenX(state.a + state.dx);
+        const qy = state.toScreenY(state.currentFunc.f(state.a + state.dx));
+
+        // ドラッグ処理
+        if (state.isDragging && state.dragTarget) {
+          if (state.dragTarget === 'P') {
+            state.a = worldX;
+            inputA.value = state.a.toFixed(2);
+          } else if (state.dragTarget === 'Q') {
+            state.dx = worldX - state.a;
+            dxSlider.value = state.dx;
+          }
+          updateUI();
+          return;
+        }
+
+        // ホバー判定 (P点 or Q点)
+        let hovered = null;
+        if (Math.hypot(pos.x - px, pos.y - py) < 18) {
+          hovered = 'P';
+        } else if (Math.hypot(pos.x - qx, pos.y - qy) < 18) {
+          hovered = 'Q';
+        }
+
+        if (state.hoveredPoint !== hovered) {
+          state.hoveredPoint = hovered;
+          mainCanvas.style.cursor = hovered ? 'pointer' : 'crosshair';
+          render();
+        }
+      }
+
+      function handleDown(e) {
+        const pos = getPos(e);
+        const worldX = state.toWorldX(pos.x);
+
+        const px = state.toScreenX(state.a);
+        const py = state.toScreenY(state.currentFunc.f(state.a));
+        const qx = state.toScreenX(state.a + state.dx);
+        const qy = state.toScreenY(state.currentFunc.f(state.a + state.dx));
+
+        // 1. 点 P / 点 Q のドラッグ開始判定
+        if (Math.hypot(pos.x - px, pos.y - py) < 20) {
+          state.isDragging = true;
+          state.dragTarget = 'P';
+          return;
+        }
+        if (Math.hypot(pos.x - qx, pos.y - qy) < 20) {
+          state.isDragging = true;
+          state.dragTarget = 'Q';
+          return;
+        }
+
+        // 2. グラフ上クリックによる 始点(P) / 終点(Q) の交互設定
+        if (state.clickMode === 'setA') {
+          state.a = Math.round(worldX * 100) / 100;
+          inputA.value = state.a.toFixed(2);
+          state.clickMode = 'setDx';
+        } else {
+          const newAx = Math.round(worldX * 100) / 100;
+          state.dx = newAx - state.a;
+          if (Math.abs(state.dx) < 0.01) state.dx = 0.1;
+          dxSlider.value = state.dx;
+          state.clickMode = 'setA';
+        }
+
+        updateUI();
+      }
+
+      function handleUp() {
+        state.isDragging = false;
+        state.dragTarget = null;
+      }
+
+      mainCanvas.addEventListener('mousedown', handleDown);
+      mainCanvas.addEventListener('mousemove', handleMove);
+      window.addEventListener('mouseup', handleUp);
+
+      mainCanvas.addEventListener('touchstart', (e) => { handleDown(e); }, { passive: true });
+      mainCanvas.addEventListener('touchmove', (e) => { handleMove(e); }, { passive: true });
+      window.addEventListener('touchend', handleUp);
+    }
+
+    // アプリ初期化実行
+    window.onload = init;
+  </script>
+</body>
+</html>
